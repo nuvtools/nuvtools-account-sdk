@@ -105,7 +105,7 @@ public class SignInTests
         {
             Assert.That(completed.Succeeded, Is.True);
             Assert.That(completed.Data!.ReturnUrl, Is.EqualTo("/portal/billing"));
-            Assert.That(handedOver, Is.EqualTo("account-access-token"));
+            Assert.That(handedOver, Is.EqualTo(FakeAccount.AccessToken));
             Assert.That(redemption["grant_type"], Is.EqualTo("authorization_code"));
             Assert.That(redemption["code"], Is.EqualTo("the-code"));
             Assert.That(redemption["code_verifier"], Is.EqualTo(verifier));
@@ -264,6 +264,90 @@ public class SignInTests
             Assert.That(query["post_logout_redirect_uri"], Is.EqualTo(FakeNavigation.Base));
             Assert.That(query["id_token_hint"], Is.EqualTo("account-id-token"));
         }
+    }
+
+    [Test]
+    public async Task Starting_AsksForNoContextAndShowsTheSignInPage()
+    {
+        await SignIn().StartAsync(null);
+
+        var query = HttpUtility.ParseQueryString(new Uri(navigation.LastAddress!).Query);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(query["context"], Is.Null);
+            Assert.That(query["prompt"], Is.Null);
+        }
+    }
+
+    /// <summary>Switching asks the Account for that organization, without showing a sign-in page.</summary>
+    [Test]
+    public async Task Switching_AsksForTheOrganizationSilently()
+    {
+        var organizationId = Guid.NewGuid();
+
+        await SignIn().SwitchAsync(organizationId, "/portal/members");
+
+        var query = HttpUtility.ParseQueryString(new Uri(navigation.LastAddress!).Query);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(query["context"], Is.EqualTo(organizationId.ToString()));
+            Assert.That(query["prompt"], Is.EqualTo("none"));
+        }
+    }
+
+    [Test]
+    public async Task SwitchingToNoOrganization_AsksForThePersonalContext()
+    {
+        await SignIn().SwitchAsync(null, null);
+
+        Assert.That(HttpUtility.ParseQueryString(new Uri(navigation.LastAddress!).Query)["context"], Is.EqualTo("personal"));
+    }
+
+    [Test]
+    public async Task TheOrganizations_AreReadFromTheAccountWithTheTokenOfTheSignIn()
+    {
+        var signIn = SignIn();
+        await signIn.StartAsync(null);
+        var (state, _) = Pending();
+        await signIn.CompleteAsync(Callback(state), Opens);
+
+        var organizations = await signIn.GetOrganizationsAsync();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(organizations.Succeeded, Is.True);
+            Assert.That(account.LastApiBearer, Is.EqualTo(FakeAccount.AccessToken));
+            Assert.That(organizations.Data!.Select(o => (o.Name, o.Role)),
+                Is.EqualTo(new[] { ("Acme", "Owner"), ("Globex", "Member") }));
+        }
+    }
+
+    [Test]
+    public async Task TheOrganizations_AreNotAskedFor_WithAnExpiredToken()
+    {
+        account.IssuedAccessToken = FakeAccount.Jwt(DateTimeOffset.UtcNow.AddMinutes(-1));
+        var signIn = SignIn();
+        await signIn.StartAsync(null);
+        var (state, _) = Pending();
+        await signIn.CompleteAsync(Callback(state), Opens);
+
+        var organizations = await signIn.GetOrganizationsAsync();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(organizations.Succeeded, Is.False);
+            Assert.That(account.LastApiBearer, Is.Null);
+        }
+    }
+
+    [Test]
+    public async Task TheOrganizations_AreNotAskedFor_BeforeAnySignIn()
+    {
+        var organizations = await SignIn().GetOrganizationsAsync();
+
+        Assert.That(organizations.Succeeded, Is.False);
     }
 
     [Test]

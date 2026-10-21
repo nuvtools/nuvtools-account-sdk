@@ -22,4 +22,24 @@ public static class ClaimsPrincipalExtensions
 
         return new NuvToolsAccountPerson(subject, email, string.IsNullOrWhiteSpace(name) ? null : name);
     }
+
+    /// <summary>
+    /// The context the Account token was issued in. A token without the context claim, or with an
+    /// organization context naming no valid organization, reads as personal.
+    /// </summary>
+    public static NuvToolsAccountContext GetNuvToolsAccountContext(this ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        var kind = principal.FindFirst(NuvToolsAccountClaims.Context)?.Value;
+
+        if (kind != NuvToolsAccountContextKinds.Organization
+            || !Guid.TryParse(principal.FindFirst(NuvToolsAccountClaims.Organization)?.Value, out var organizationId))
+            return new NuvToolsAccountContext(NuvToolsAccountContextKinds.Personal, null, null);
+
+        var role = principal.FindFirst(NuvToolsAccountClaims.OrganizationRole)?.Value;
+
+        return new NuvToolsAccountContext(NuvToolsAccountContextKinds.Organization, organizationId,
+            string.IsNullOrWhiteSpace(role) ? null : role);
+    }
 }

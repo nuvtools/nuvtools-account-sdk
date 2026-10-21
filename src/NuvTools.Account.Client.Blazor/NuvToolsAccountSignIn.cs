@@ -39,6 +39,7 @@ public class NuvToolsAccountSignIn(
 
     private const string PendingKey = "nuvtools.account.pendingSignIn";
     private const string IdentityTokenKey = "nuvtools.account.idToken";
+    private const string AccessTokenKey = "nuvtools.account.accessToken";
 
     private NuvToolsAccountSettings? settings;
     private Task<IResult<NuvToolsAccountSignInResult>>? completion;
@@ -61,7 +62,61 @@ public class NuvToolsAccountSignIn(
     /// Leaves for the Account's sign-in page, to come back to <paramref name="returnUrl"/> — a local
     /// path; anything else is replaced by <see cref="NuvToolsAccountSignInOptions.DefaultReturnPath"/>.
     /// </summary>
-    public async Task<IResult> StartAsync(string? returnUrl)
+    public Task<IResult> StartAsync(string? returnUrl) => LeaveAsync(returnUrl, context: null, silent: false);
+
+    /// <summary>
+    /// Moves the person into one of their Account organizations, or back to their personal context
+    /// when <paramref name="organizationId"/> is <see langword="null"/>: a new authorization with the
+    /// Account's <c>context</c> parameter and <c>prompt=none</c>, so no sign-in page is shown while
+    /// the Account session lasts. The callback then completes as for a sign-in, with a token naming
+    /// that organization and the person's role in it.
+    /// </summary>
+    /// <remarks>
+    /// When the Account session has ended, the Account answers <c>login_required</c> and the
+    /// callback fails; the sign-in screen then offers to sign in again.
+    /// </remarks>
+    public Task<IResult> SwitchAsync(Guid? organizationId, string? returnUrl) =>
+        LeaveAsync(returnUrl, organizationId?.ToString() ?? "personal", silent: true);
+
+    /// <summary>
+    /// The person's Account organizations and their role in each, read from the Account's API with
+    /// the access token of the last sign-in in this tab. Requires the scope <c>account-api</c> in
+    /// <see cref="NuvToolsAccountSignInOptions.Scopes"/>; fails once that token has expired, after
+    /// which <see cref="SwitchAsync"/> or <see cref="StartAsync"/> brings a new one.
+    /// </summary>
+    public async Task<IResult<IReadOnlyList<NuvToolsAccountOrganization>>> GetOrganizationsAsync()
+    {
+        var account = await GetSettingsAsync();
+        var accessToken = await sessionStorage.GetItemAsync<string>(AccessTokenKey);
+
+        if (account is null || string.IsNullOrEmpty(accessToken) || AccessTokenExpiry.HasExpired(accessToken, DateTimeOffset.UtcNow))
+            return Result<IReadOnlyList<NuvToolsAccountOrganization>>.Fail(NuvMessages.AccessDenied);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{account.Authority}api/v1/me/contexts");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+        try
+        {
+            using var response = await Client.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+                return Result<IReadOnlyList<NuvToolsAccountOrganization>>.Fail(NuvMessages.AccessDenied);
+
+            var contexts = await response.Content.ReadFromJsonAsync<AccountContextsResponse>();
+
+            IReadOnlyList<NuvToolsAccountOrganization> organizations = [.. (contexts?.Data ?? [])
+                .Where(c => c.Kind == "organization" && c.OrganizationId is not null)
+                .Select(c => new NuvToolsAccountOrganization(c.OrganizationId!.Value, c.OrganizationName ?? string.Empty, RoleName(c.Role)))];
+
+            return Result<IReadOnlyList<NuvToolsAccountOrganization>>.Success(organizations);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException)
+        {
+            return Result<IReadOnlyList<NuvToolsAccountOrganization>>.Fail(NuvMessages.TheOperationCouldNotBePerformed);
+        }
+    }
+
+    private async Task<IResult> LeaveAsync(string? returnUrl, string? context, bool silent)
     {
         var account = await GetSettingsAsync();
 
@@ -71,7 +126,7 @@ public class NuvToolsAccountSignIn(
 
         await sessionStorage.SetItemAsync(PendingKey, pending);
 
-        navigation.NavigateTo(AuthorizeAddress(account, pending), forceLoad: true);
+        navigation.NavigateTo(AuthorizeAddress(account, pending, context, silent), forceLoad: true);
 
         return Result.Success();
     }
@@ -105,6 +160,7 @@ public class NuvToolsAccountSignIn(
 
         var identityToken = await sessionStorage.GetItemAsync<string>(IdentityTokenKey);
         await sessionStorage.RemoveItemAsync(IdentityTokenKey);
+        await sessionStorage.RemoveItemAsync(AccessTokenKey);
 
         return Address($"{account.Authority}connect/logout",
             ("client_id", account.ClientId),
@@ -181,11 +237,14 @@ public class NuvToolsAccountSignIn(
         if (!string.IsNullOrEmpty(tokens.IdentityToken))
             await sessionStorage.SetItemAsync(IdentityTokenKey, tokens.IdentityToken);
 
+        // Kept for the Account's own API (the organization list), and only for its short life.
+        await sessionStorage.SetItemAsync(AccessTokenKey, tokens.AccessToken);
+
         return Result<NuvToolsAccountSignInResult>.Success(
             new NuvToolsAccountSignInResult(pending.ReturnUrl ?? options.DefaultReturnPath));
     }
 
-    private string AuthorizeAddress(NuvToolsAccountSettings account, PendingSignIn pending) =>
+    private string AuthorizeAddress(NuvToolsAccountSettings account, PendingSignIn pending, string? context, bool silent) =>
         Address($"{account.Authority}connect/authorize",
             ("client_id", account.ClientId),
             ("response_type", "code"),
@@ -193,7 +252,17 @@ public class NuvToolsAccountSignIn(
             ("redirect_uri", RedirectUri),
             ("state", pending.State),
             ("code_challenge", Pkce.Challenge(pending.Verifier)),
-            ("code_challenge_method", "S256"));
+            ("code_challenge_method", "S256"),
+            ("context", context),
+            ("prompt", silent ? "none" : null));
+
+    /// <summary>The Account's role numbers, as the names its tokens use.</summary>
+    private static string RoleName(int? role) => role switch
+    {
+        3 => "Owner",
+        2 => "Billing",
+        _ => "Member"
+    };
 
     private async Task<NuvToolsAccountSettings?> ReadSettingsAsync()
     {

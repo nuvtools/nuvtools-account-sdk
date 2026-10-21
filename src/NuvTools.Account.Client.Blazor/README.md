@@ -41,6 +41,21 @@ Navigation.NavigateTo(completed.Succeeded ? completed.Data!.ReturnUrl : "/login?
 the second instance receives the first one's answer. The state is spent on the way in, so the same
 response cannot be used twice. Return addresses off the app are replaced by `DefaultReturnPath`.
 
+## Organizations
+
+Add the Account's own API to the scopes (`options.Scopes.Add("account-api")`, and give the client that
+scope at the Account) to list the person's organizations for a switcher:
+
+```csharp
+var organizations = await AccountSignIn.GetOrganizationsAsync(); // Id, Name, Role
+await AccountSignIn.SwitchAsync(organizationId, returnUrl);      // null = personal context
+```
+
+`SwitchAsync` asks the Account for that organization with `prompt=none`, so no sign-in page appears
+while the Account session lasts; the callback completes as for a sign-in, with a token naming the
+organization and the person's role. `GetOrganizationsAsync` uses the access token of the last sign-in
+in the tab and fails once it has expired; a switch or a sign-in brings a new one.
+
 ## Signing out
 
 ```csharp

@@ -37,6 +37,12 @@ public async Task<IActionResult> SignInAsync()
 }
 ```
 
+`User.GetNuvToolsAccountContext()` says which context the token was issued in: personal, or an
+Account organization (`OrganizationId`) with the person's role there (`NuvToolsAccountRoles`:
+`Owner`, `Billing`, `Member`). The Account checks the membership when it issues the token and on
+every refresh, so a product can open a session inside its own organization linked to that one and
+take the Account's role from it.
+
 The Account issues tokens only for confirmed addresses and holds each address once, so linking a
 person seen for the first time to the local user holding the same address is safe. Never re-link an
 address already linked to a different subject.
