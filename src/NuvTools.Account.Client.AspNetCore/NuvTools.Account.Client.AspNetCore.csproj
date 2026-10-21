@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- The frameworks NuvTools.Common and NuvTools.AspNetCore target. -->
+		<TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AnalysisLevel>latest</AnalysisLevel>
+		<EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+		<NeutralLanguage>en</NeutralLanguage>
+
+		<Version>10.0.0</Version>
+		<Authors>Nuv Tools</Authors>
+		<Copyright>Copyright © 2026 Nuv Tools</Copyright>
+		<Description>Server side of signing in through Nuv Tools Account, for a product's ASP.NET Core API and web host. Registers the authentication scheme that accepts the Account's access tokens issued for the product — signing keys from the Account's discovery document, exact issuer and audience — names the claims those tokens carry, and serves the Account's address to a browser client.</Description>
+		<PackageProjectUrl>https://nuvtools.com/products/account/</PackageProjectUrl>
+		<PackageTags>NuvTools Account OpenIdConnect OIDC JwtBearer Authentication SDK</PackageTags>
+		<PackageIcon>icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+		<RepositoryUrl>https://github.com/nuvtools/nuvtools-account-sdk</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+
+		<!-- SourceLink is built into the .NET 8+ SDK; see nuvtools-dataprovider-sdk for why the
+		     standalone package is not referenced. -->
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\..\icon.png" Pack="True" PackagePath="" />
+		<None Include="..\..\LICENSE" Pack="True" PackagePath="" />
+		<None Include="README.md" Pack="True" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<!-- The bearer handler ships outside the shared framework, one major per runtime. -->
+	<ItemGroup>
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" Condition="'$(TargetFramework)' == 'net10.0'" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.21" Condition="'$(TargetFramework)' == 'net9.0'" />
+		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.32" Condition="'$(TargetFramework)' == 'net8.0'" />
+	</ItemGroup>
+
+</Project>

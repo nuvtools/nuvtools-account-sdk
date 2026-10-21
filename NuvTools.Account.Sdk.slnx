@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/NuvTools.Account.Client.AspNetCore/NuvTools.Account.Client.AspNetCore.csproj" />
+    <Project Path="src/NuvTools.Account.Client.Blazor/NuvTools.Account.Client.Blazor.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/NuvTools.Account.Client.AspNetCore.UnitTests/NuvTools.Account.Client.AspNetCore.UnitTests.csproj" />
+    <Project Path="tests/NuvTools.Account.Client.Blazor.UnitTests/NuvTools.Account.Client.Blazor.UnitTests.csproj" />
+  </Folder>
+</Solution>

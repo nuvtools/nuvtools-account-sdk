@@ -1,0 +1,61 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+	<PropertyGroup>
+		<!-- The frameworks NuvTools.AspNetCore.Blazor targets. -->
+		<TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AnalysisLevel>latest</AnalysisLevel>
+		<EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+		<NeutralLanguage>en</NeutralLanguage>
+
+		<Version>10.0.0</Version>
+		<Authors>Nuv Tools</Authors>
+		<Copyright>Copyright © 2026 Nuv Tools</Copyright>
+		<Description>Browser side of signing in through Nuv Tools Account, for a product's Blazor WebAssembly app: the authorization code flow with PKCE as a public client, the callback that redeems the code and hands the Account's access token to the product, and signing out through the Account's end-session page.</Description>
+		<PackageProjectUrl>https://nuvtools.com/products/account/</PackageProjectUrl>
+		<PackageTags>NuvTools Account OpenIdConnect OIDC PKCE Blazor WebAssembly Authentication SDK</PackageTags>
+		<PackageIcon>icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+		<RepositoryUrl>https://github.com/nuvtools/nuvtools-account-sdk</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\..\icon.png" Pack="True" PackagePath="" />
+		<None Include="..\..\LICENSE" Pack="True" PackagePath="" />
+		<None Include="README.md" Pack="True" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<SupportedPlatform Include="browser" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<InternalsVisibleTo Include="NuvTools.Account.Client.Blazor.UnitTests" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Session storage (ISessionStorageService) for the state and the PKCE verifier between
+		     leaving for the Account and coming back, and the result wrapper every NuvTools client
+		     answers with. -->
+		<PackageReference Include="NuvTools.AspNetCore.Blazor" Version="10.1.12" />
+		<PackageReference Include="NuvTools.Common" Version="10.0.12" />
+		<!-- The failures it answers with, in English and Portuguese like every NuvTools message. -->
+		<PackageReference Include="NuvTools.Resources" Version="10.1.4" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.13" />
+	</ItemGroup>
+
+</Project>
