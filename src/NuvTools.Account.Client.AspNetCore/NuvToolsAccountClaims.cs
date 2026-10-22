@@ -31,4 +31,13 @@ public static class NuvToolsAccountClaims
 
     /// <summary>How the person signed in (<c>pwd</c>, <c>otp</c>, <c>mfa</c>, <c>hwk</c>, <c>fed</c>); may repeat.</summary>
     public const string AuthenticationMethods = "amr";
+
+    /// <summary>
+    /// A plan the context subscribes to, as <c>product:plan</c>; one per product whose API the token is
+    /// for. Read it with <see cref="ClaimsPrincipalExtensions.GetNuvToolsAccountPlans"/>.
+    /// </summary>
+    public const string Plan = "plan";
+
+    /// <summary>What those plans grant: a JSON object keyed by product code.</summary>
+    public const string Entitlements = "entitlements";
 }

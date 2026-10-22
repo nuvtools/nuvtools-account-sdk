@@ -43,6 +43,12 @@ Account organization (`OrganizationId`) with the person's role there (`NuvToolsA
 every refresh, so a product can open a session inside its own organization linked to that one and
 take the Account's role from it.
 
+`User.GetNuvToolsAccountPlans()` — or `GetNuvToolsAccountPlan("clinuv")` — says what the context
+subscribes to among the products whose APIs the token is for: the product, the plan and what it
+grants (`Entitlements`, the JSON object the product defined in the Account's catalogue). A product
+with no plan in the token is not entitled. The Account reads the subscription again on every token
+renewal, so a plan bought, changed or lapsed reaches the product with the next token.
+
 The Account issues tokens only for confirmed addresses and holds each address once, so linking a
 person seen for the first time to the local user holding the same address is safe. Never re-link an
 address already linked to a different subject.

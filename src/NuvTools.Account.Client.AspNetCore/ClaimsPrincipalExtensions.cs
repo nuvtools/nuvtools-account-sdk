@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace NuvTools.Account.Client.AspNetCore;
 
@@ -41,5 +42,61 @@ public static class ClaimsPrincipalExtensions
 
         return new NuvToolsAccountContext(NuvToolsAccountContextKinds.Organization, organizationId,
             string.IsNullOrWhiteSpace(role) ? null : role);
+    }
+
+    /// <summary>
+    /// The plans the token's context is subscribed to, among the products whose APIs the token is for.
+    /// Empty when it subscribes to none — which a product reads as "not entitled".
+    /// </summary>
+    public static IReadOnlyList<NuvToolsAccountPlan> GetNuvToolsAccountPlans(this ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        var granted = ReadEntitlements(principal.FindFirst(NuvToolsAccountClaims.Entitlements)?.Value);
+
+        return
+        [
+            .. principal.FindAll(NuvToolsAccountClaims.Plan)
+                .Select(claim => claim.Value.Split(':', 2))
+                .Where(parts => parts.Length == 2 && parts[0].Length > 0 && parts[1].Length > 0)
+                .Select(parts => new NuvToolsAccountPlan(
+                    parts[0],
+                    parts[1],
+                    granted.TryGetValue(parts[0], out var entitlements) ? entitlements : EmptyObject))
+        ];
+    }
+
+    /// <summary>The plan of one product, or <see langword="null"/> when the context does not subscribe to it.</summary>
+    public static NuvToolsAccountPlan? GetNuvToolsAccountPlan(this ClaimsPrincipal principal, string productCode)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(productCode);
+
+        return principal.GetNuvToolsAccountPlans()
+            .FirstOrDefault(plan => string.Equals(plan.ProductCode, productCode, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static readonly JsonElement EmptyObject = JsonDocument.Parse("{}").RootElement.Clone();
+
+    /// <summary>The <c>entitlements</c> claim, by product; nothing when it is absent or not a JSON object.</summary>
+    private static Dictionary<string, JsonElement> ReadEntitlements(string? json)
+    {
+        var byProduct = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+
+        if (string.IsNullOrWhiteSpace(json)) return byProduct;
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+
+            if (document.RootElement.ValueKind != JsonValueKind.Object) return byProduct;
+
+            foreach (var product in document.RootElement.EnumerateObject())
+                byProduct[product.Name] = product.Value.Clone();
+        }
+        catch (JsonException)
+        {
+        }
+
+        return byProduct;
     }
 }

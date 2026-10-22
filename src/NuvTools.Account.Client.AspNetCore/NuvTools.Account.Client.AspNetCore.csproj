@@ -9,7 +9,7 @@
 		<EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
 		<NeutralLanguage>en</NeutralLanguage>
 
-		<Version>10.0.1</Version>
+		<Version>10.0.2</Version>
 		<Authors>Nuv Tools</Authors>
 		<Copyright>Copyright © 2026 Nuv Tools</Copyright>
 		<Description>Server side of signing in through Nuv Tools Account, for a product's ASP.NET Core API and web host. Registers the authentication scheme that accepts the Account's access tokens issued for the product — signing keys from the Account's discovery document, exact issuer and audience — names the claims those tokens carry, and serves the Account's address to a browser client.</Description>
