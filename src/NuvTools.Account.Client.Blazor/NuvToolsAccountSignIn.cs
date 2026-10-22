@@ -230,15 +230,23 @@ public class NuvToolsAccountSignIn(
 
         if (string.IsNullOrEmpty(tokens?.AccessToken)) return Fail(NuvMessages.AccessDenied);
 
-        var session = await openSession(tokens.AccessToken);
-
-        if (!session.Succeeded) return Result<NuvToolsAccountSignInResult>.Fail(session.Messages);
-
+        // Kept for the Account's own API (the organization list), and only for its short life. Stored
+        // before the session opens: opening it raises the authentication change that components such
+        // as an organization switcher react to, and they read the list right then.
         if (!string.IsNullOrEmpty(tokens.IdentityToken))
             await sessionStorage.SetItemAsync(IdentityTokenKey, tokens.IdentityToken);
 
-        // Kept for the Account's own API (the organization list), and only for its short life.
         await sessionStorage.SetItemAsync(AccessTokenKey, tokens.AccessToken);
+
+        var session = await openSession(tokens.AccessToken);
+
+        if (!session.Succeeded)
+        {
+            await sessionStorage.RemoveItemAsync(IdentityTokenKey);
+            await sessionStorage.RemoveItemAsync(AccessTokenKey);
+
+            return Result<NuvToolsAccountSignInResult>.Fail(session.Messages);
+        }
 
         return Result<NuvToolsAccountSignInResult>.Success(
             new NuvToolsAccountSignInResult(pending.ReturnUrl ?? options.DefaultReturnPath));

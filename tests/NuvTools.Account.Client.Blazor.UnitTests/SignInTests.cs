@@ -324,6 +324,39 @@ public class SignInTests
         }
     }
 
+    /// <summary>
+    /// Opening the session raises the authentication change an organization switcher reacts to; the
+    /// list it reads right then must already find the token.
+    /// </summary>
+    [Test]
+    public async Task TheOrganizations_CanBeRead_WhileTheSessionOpens()
+    {
+        var signIn = SignIn();
+        await signIn.StartAsync(null);
+        var (state, _) = Pending();
+        NuvTools.Common.ResultWrapper.IResult<IReadOnlyList<NuvToolsAccountOrganization>>? duringOpen = null;
+
+        await signIn.CompleteAsync(Callback(state), async _ =>
+        {
+            duringOpen = await signIn.GetOrganizationsAsync();
+            return Result.Success();
+        });
+
+        Assert.That(duringOpen?.Data?.Count, Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task ARefusedSession_KeepsNoToken()
+    {
+        var signIn = SignIn();
+        await signIn.StartAsync(null);
+        var (state, _) = Pending();
+
+        await signIn.CompleteAsync(Callback(state), _ => Task.FromResult(Result.Fail("Inactive user.")));
+
+        Assert.That((await signIn.GetOrganizationsAsync()).Succeeded, Is.False);
+    }
+
     [Test]
     public async Task TheOrganizations_AreNotAskedFor_WithAnExpiredToken()
     {
