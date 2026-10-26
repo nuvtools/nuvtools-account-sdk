@@ -16,10 +16,11 @@ namespace NuvTools.Account.Client.Blazor;
 /// </summary>
 /// <remarks>
 /// <para>
-/// The Account's access token is handed to the product once, on the callback, and not kept: the
-/// product exchanges it for a session of its own, or uses it as it sees fit. No refresh token is
-/// asked of the Account. The identity token is kept in session storage only to name the person
-/// when signing out.
+/// The Account's tokens are kept in this tab's session storage. A product calls its own API with the
+/// access token — as a Dynamics 365 app calls Dataverse with Entra's — through
+/// <see cref="GetAccessTokenAsync"/>, which renews it with the refresh token the Account issues when
+/// <c>offline_access</c> is among the scopes; <see cref="NuvToolsAccountBearerHandler"/> puts it on
+/// every request. The identity token names the person when signing out.
 /// </para>
 /// <para>
 /// The <c>state</c> and the PKCE verifier stay in this tab's session storage between leaving and
@@ -40,6 +41,14 @@ public class NuvToolsAccountSignIn(
     private const string PendingKey = "nuvtools.account.pendingSignIn";
     private const string IdentityTokenKey = "nuvtools.account.idToken";
     private const string AccessTokenKey = "nuvtools.account.accessToken";
+    private const string RefreshTokenKey = "nuvtools.account.refreshToken";
+
+    /// <summary>
+    /// Serializes renewal across every instance in the app: a page asks for several things at once, and
+    /// the Account rotates the refresh token on each use, so a second renewal presenting the token the
+    /// first one just spent would fail and end the session.
+    /// </summary>
+    private static readonly SemaphoreSlim Renewal = new(1, 1);
 
     private NuvToolsAccountSettings? settings;
     private Task<IResult<NuvToolsAccountSignInResult>>? completion;
@@ -87,9 +96,9 @@ public class NuvToolsAccountSignIn(
     public async Task<IResult<IReadOnlyList<NuvToolsAccountOrganization>>> GetOrganizationsAsync()
     {
         var account = await GetSettingsAsync();
-        var accessToken = await sessionStorage.GetItemAsync<string>(AccessTokenKey);
+        var accessToken = await GetAccessTokenAsync();
 
-        if (account is null || string.IsNullOrEmpty(accessToken) || AccessTokenExpiry.HasExpired(accessToken, DateTimeOffset.UtcNow))
+        if (account is null || accessToken is null)
             return Result<IReadOnlyList<NuvToolsAccountOrganization>>.Fail(NuvMessages.AccessDenied);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{account.Authority}api/v1/me/contexts");
@@ -114,6 +123,107 @@ public class NuvToolsAccountSignIn(
         {
             return Result<IReadOnlyList<NuvToolsAccountOrganization>>.Fail(NuvMessages.TheOperationCouldNotBePerformed);
         }
+    }
+
+    /// <summary>
+    /// The access token of this tab's session, renewed at the Account when it is about to expire, or
+    /// <see langword="null"/> when there is no session left — never signed in, signed out, or a refresh
+    /// token the Account no longer accepts.
+    /// </summary>
+    public async Task<string?> GetAccessTokenAsync(CancellationToken cancellationToken = default)
+    {
+        var token = await sessionStorage.GetItemAsync<string>(AccessTokenKey);
+
+        if (!string.IsNullOrEmpty(token) && !AccessTokenExpiry.HasExpired(token, DateTimeOffset.UtcNow)) return token;
+
+        await Renewal.WaitAsync(cancellationToken);
+
+        try
+        {
+            // Read again inside the gate: whoever held it may have renewed already.
+            token = await sessionStorage.GetItemAsync<string>(AccessTokenKey);
+
+            if (!string.IsNullOrEmpty(token) && !AccessTokenExpiry.HasExpired(token, DateTimeOffset.UtcNow)) return token;
+
+            return await RenewAsync(cancellationToken);
+        }
+        finally
+        {
+            Renewal.Release();
+        }
+    }
+
+    /// <summary>
+    /// Renews the access token now, expired or not — after something changed at the Account that the
+    /// token carries, such as the organization's name. <see langword="null"/> when it cannot.
+    /// </summary>
+    public async Task<string?> RenewAccessTokenAsync(CancellationToken cancellationToken = default)
+    {
+        await Renewal.WaitAsync(cancellationToken);
+
+        try
+        {
+            return await RenewAsync(cancellationToken);
+        }
+        finally
+        {
+            Renewal.Release();
+        }
+    }
+
+    /// <summary>Forgets this tab's tokens without leaving for the Account: the local half of signing out.</summary>
+    public async Task ForgetTokensAsync()
+    {
+        await sessionStorage.RemoveItemAsync(IdentityTokenKey);
+        await sessionStorage.RemoveItemAsync(AccessTokenKey);
+        await sessionStorage.RemoveItemAsync(RefreshTokenKey);
+    }
+
+    private async Task<string?> RenewAsync(CancellationToken cancellationToken)
+    {
+        var account = await GetSettingsAsync();
+        var refreshToken = await sessionStorage.GetItemAsync<string>(RefreshTokenKey);
+
+        if (account is null || string.IsNullOrEmpty(refreshToken)) return null;
+
+        try
+        {
+            using var renewed = await Client.PostAsync($"{account.Authority}connect/token", new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["grant_type"] = "refresh_token",
+                ["refresh_token"] = refreshToken,
+                ["client_id"] = account.ClientId!
+            }), cancellationToken);
+
+            var tokens = renewed.IsSuccessStatusCode ? await renewed.Content.ReadFromJsonAsync<AccountTokenResponse>(cancellationToken) : null;
+
+            if (string.IsNullOrEmpty(tokens?.AccessToken))
+            {
+                // Spent, expired or revoked — the person was removed, or signed out elsewhere.
+                await ForgetTokensAsync();
+                return null;
+            }
+
+            await StoreAsync(tokens);
+
+            return tokens.AccessToken;
+        }
+        catch (Exception exception) when (exception is HttpRequestException or System.Text.Json.JsonException)
+        {
+            // The Account is unreachable: the tokens are kept for the next try.
+            return null;
+        }
+    }
+
+    private async Task StoreAsync(AccountTokenResponse tokens)
+    {
+        if (!string.IsNullOrEmpty(tokens.IdentityToken))
+            await sessionStorage.SetItemAsync(IdentityTokenKey, tokens.IdentityToken);
+
+        if (!string.IsNullOrEmpty(tokens.RefreshToken))
+            await sessionStorage.SetItemAsync(RefreshTokenKey, tokens.RefreshToken);
+
+        await sessionStorage.SetItemAsync(AccessTokenKey, tokens.AccessToken);
     }
 
     private async Task<IResult> LeaveAsync(string? returnUrl, string? context, bool silent)
@@ -159,8 +269,7 @@ public class NuvToolsAccountSignIn(
         SigningOut = true;
 
         var identityToken = await sessionStorage.GetItemAsync<string>(IdentityTokenKey);
-        await sessionStorage.RemoveItemAsync(IdentityTokenKey);
-        await sessionStorage.RemoveItemAsync(AccessTokenKey);
+        await ForgetTokensAsync();
 
         return Address($"{account.Authority}connect/logout",
             ("client_id", account.ClientId),
@@ -230,20 +339,15 @@ public class NuvToolsAccountSignIn(
 
         if (string.IsNullOrEmpty(tokens?.AccessToken)) return Fail(NuvMessages.AccessDenied);
 
-        // Kept for the Account's own API (the organization list), and only for its short life. Stored
-        // before the session opens: opening it raises the authentication change that components such
-        // as an organization switcher react to, and they read the list right then.
-        if (!string.IsNullOrEmpty(tokens.IdentityToken))
-            await sessionStorage.SetItemAsync(IdentityTokenKey, tokens.IdentityToken);
-
-        await sessionStorage.SetItemAsync(AccessTokenKey, tokens.AccessToken);
+        // Stored before the session opens: opening it raises the authentication change that components
+        // such as an organization switcher react to, and they read with the token right then.
+        await StoreAsync(tokens);
 
         var session = await openSession(tokens.AccessToken);
 
         if (!session.Succeeded)
         {
-            await sessionStorage.RemoveItemAsync(IdentityTokenKey);
-            await sessionStorage.RemoveItemAsync(AccessTokenKey);
+            await ForgetTokensAsync();
 
             return Result<NuvToolsAccountSignInResult>.Fail(session.Messages);
         }

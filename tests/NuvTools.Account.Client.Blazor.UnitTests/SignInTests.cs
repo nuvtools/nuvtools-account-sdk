@@ -376,6 +376,76 @@ public class SignInTests
     }
 
     [Test]
+    public async Task AnExpiredAccessToken_IsRenewedWithTheRefreshToken_OnceForConcurrentCallers()
+    {
+        account.IssuedAccessToken = FakeAccount.Jwt(DateTimeOffset.UtcNow.AddMinutes(-1));
+        account.IssuedRefreshToken = "refresh-1";
+        account.RenewedAccessToken = FakeAccount.Jwt(DateTimeOffset.UtcNow.AddHours(1));
+        var signIn = SignIn();
+        await signIn.StartAsync(null);
+        var (state, _) = Pending();
+        await signIn.CompleteAsync(Callback(state), Opens);
+
+        var tokens = await Task.WhenAll(signIn.GetAccessTokenAsync(), SignIn().GetAccessTokenAsync());
+        var renewals = account.Redemptions.Where(r => r["grant_type"] == "refresh_token").ToList();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(tokens, Is.All.EqualTo(account.RenewedAccessToken));
+            Assert.That(renewals, Has.Count.EqualTo(1));
+            Assert.That(renewals[0]["refresh_token"], Is.EqualTo("refresh-1"));
+            Assert.That(storage.Items["nuvtools.account.refreshToken"], Does.Contain("refresh-renewed"));
+        }
+    }
+
+    [Test]
+    public async Task ARefusedRenewal_EndsTheSession()
+    {
+        account.IssuedAccessToken = FakeAccount.Jwt(DateTimeOffset.UtcNow.AddMinutes(-1));
+        account.IssuedRefreshToken = "refresh-1";
+        var signIn = SignIn();
+        await signIn.StartAsync(null);
+        var (state, _) = Pending();
+        await signIn.CompleteAsync(Callback(state), Opens);
+
+        var token = await signIn.GetAccessTokenAsync();
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(token, Is.Null);
+            Assert.That(storage.Items.Keys, Has.None.StartsWith("nuvtools.account.").And.Not.EqualTo("nuvtools.account.pendingSignIn"));
+        }
+    }
+
+    [Test]
+    public async Task TheBearerHandler_PutsTheTokenOnTheProductsRequests()
+    {
+        var signIn = SignIn();
+        await signIn.StartAsync(null);
+        var (state, _) = Pending();
+        await signIn.CompleteAsync(Callback(state), Opens);
+
+        var api = new RecordingHandler();
+        using var client = new HttpClient(new NuvToolsAccountBearerHandler(signIn) { InnerHandler = api });
+
+        await client.GetAsync("https://api.product.test/v1/things");
+
+        Assert.That(api.LastBearer, Is.EqualTo(FakeAccount.AccessToken));
+    }
+
+    private sealed class RecordingHandler : HttpMessageHandler
+    {
+        public string? LastBearer { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            LastBearer = request.Headers.Authorization?.Parameter;
+
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
+        }
+    }
+
+    [Test]
     public async Task TheOrganizations_AreNotAskedFor_BeforeAnySignIn()
     {
         var organizations = await SignIn().GetOrganizationsAsync();

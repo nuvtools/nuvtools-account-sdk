@@ -5,9 +5,10 @@ The .NET packages a NuvTools product installs to sign people in through **Nuv To
 | Package | For | What it does |
 |---|---|---|
 | [`NuvTools.Account.Client.AspNetCore`](src/NuvTools.Account.Client.AspNetCore/README.md) | the product's API and web host | Accepts the Account's access tokens issued for the product, names their claims, and serves the Account's address to the browser |
-| [`NuvTools.Account.Client.Blazor`](src/NuvTools.Account.Client.Blazor/README.md) | the product's Blazor WebAssembly app | Authorization code flow with PKCE, the callback, and signing out through the Account |
+| [`NuvTools.Account.Client.Blazor`](src/NuvTools.Account.Client.Blazor/README.md) | the product's Blazor WebAssembly app | Authorization code flow with PKCE, the callback, keeping and renewing the Account's token for the product's API, and signing out through the Account |
+| [`NuvTools.Account.Client.Products`](src/NuvTools.Account.Client.Products/README.md) | the product's backend | Enrolments, licence types and licences at the Account, and the gate — whether a person may use the product — cached per request |
 
-Both target .NET 8, 9 and 10. The Data Provider is the first product to use them.
+All target .NET 8, 9 and 10. The Data Provider is the first product to use them.
 
 ## How a product signs people in
 
@@ -15,8 +16,10 @@ Both target .NET 8, 9 and 10. The Data Provider is the first product to use them
    product API's scope, which is also the audience its tokens carry).
 2. The browser leaves for the Account, the person signs in there — password, second factor, passkey,
    Google or Microsoft — and comes back with a code, which the browser redeems.
-3. The browser presents the Account's access token once to the product's API, which validates it and
-   opens the product's own session. Permissions and organizations stay the product's.
+3. The browser calls the product's API with the Account's access token, renewed with the refresh
+   token the Account issues for `offline_access`. The API validates it, asks the Account's gate whether
+   the person may use the product, and decides what they may do from its own roles — as Dynamics 365
+   does with Entra's token and Dataverse's security roles. No product issues a token of its own.
 
 ## Building
 
@@ -27,7 +30,7 @@ dotnet test  NuvTools.Account.Sdk.slnx
 
 ## Publishing
 
-One workflow per package (`aspnetcore-publish.yml`, `blazor-publish.yml`), run by hand. Unchecked, it
+One workflow per package (`aspnetcore-publish.yml`, `blazor-publish.yml`, `products-publish.yml`), run by hand. Unchecked, it
 packs and verifies; checked, it pushes the `<Version>` in the project to nuget.org through trusted
 publishing — approved in the `nuget` environment — and then tags the commit. Versions follow the
 NuvTools rule: major is the .NET version, minor a breaking change, patch everything else.

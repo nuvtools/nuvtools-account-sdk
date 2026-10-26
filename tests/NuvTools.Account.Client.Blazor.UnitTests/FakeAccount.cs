@@ -26,6 +26,12 @@ internal sealed class FakeAccount : HttpMessageHandler, IHttpClientFactory
     /// <summary>What the token endpoint hands out; replace it with an expired one to test expiry.</summary>
     public string IssuedAccessToken { get; set; } = AccessToken;
 
+    /// <summary>The refresh token the code redemption hands out; none unless a test asks for one.</summary>
+    public string? IssuedRefreshToken { get; set; }
+
+    /// <summary>What a renewal with a refresh token hands out; <see langword="null"/> refuses it, as for a spent token.</summary>
+    public string? RenewedAccessToken { get; set; }
+
     /// <summary>The bearer token the last call to the Account's API carried.</summary>
     public string? LastApiBearer { get; private set; }
 
@@ -56,7 +62,14 @@ internal sealed class FakeAccount : HttpMessageHandler, IHttpClientFactory
             var form = HttpUtility.ParseQueryString(await request.Content!.ReadAsStringAsync(cancellationToken));
             Redemptions.Add(form.AllKeys.ToDictionary(k => k!, k => form[k]));
 
-            return Json(TokenStatus, $$"""{"access_token":"{{IssuedAccessToken}}","id_token":"account-id-token","token_type":"Bearer"}""");
+            if (form["grant_type"] == "refresh_token")
+                return RenewedAccessToken is null
+                    ? Json(HttpStatusCode.BadRequest, """{"error":"invalid_grant"}""")
+                    : Json(HttpStatusCode.OK, $$"""{"access_token":"{{RenewedAccessToken}}","refresh_token":"refresh-renewed","token_type":"Bearer"}""");
+
+            var refresh = IssuedRefreshToken is null ? string.Empty : $$""","refresh_token":"{{IssuedRefreshToken}}""" + "\"";
+
+            return Json(TokenStatus, $$"""{"access_token":"{{IssuedAccessToken}}","id_token":"account-id-token"{{refresh}},"token_type":"Bearer"}""");
         }
 
         if (address == $"{Authority}api/v1/me/contexts")

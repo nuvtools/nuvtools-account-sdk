@@ -1,0 +1,40 @@
+# =============================================================================
+# Publishes NuvTools.Account.Client.Products to nuget.org.
+#
+# Run by hand. With "push" unchecked it packs and verifies only; with it
+# checked it publishes the <Version> in the project and then tags the commit
+# products-vX.Y.Z. The tag is a record of what was published, written by the
+# workflow — it is never what starts a release.
+#
+# The steps are package-publish.yml's; this file only says which package.
+#
+# One workflow per library: a run and an approval each concern exactly one
+# package, so releasing this one can never push another.
+# =============================================================================
+
+name: Products Publish
+run-name: Products · ${{ inputs.push && 'publish' || 'dry run' }} (${{ github.ref_name }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push to nuget.org and tag the release (uncheck for pack + verify only)"
+        type: boolean
+        default: false
+
+# id-token is for the publish job's OIDC exchange with nuget.org, and contents: write for the
+# release tag it creates afterwards; a called workflow can only use what its caller grants.
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  publish:
+    uses: ./.github/workflows/package-publish.yml
+    with:
+      project: src/NuvTools.Account.Client.Products/NuvTools.Account.Client.Products.csproj
+      package-id: NuvTools.Account.Client.Products
+      tag-prefix: products-v
+      push: ${{ inputs.push == true }}
+    secrets: inherit

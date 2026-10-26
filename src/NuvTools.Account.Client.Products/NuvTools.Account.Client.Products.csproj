@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<!-- The frameworks NuvTools.Common targets. -->
+		<TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<AnalysisLevel>latest</AnalysisLevel>
+		<EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+		<NeutralLanguage>en</NeutralLanguage>
+
+		<Version>10.0.0</Version>
+		<Authors>Nuv Tools</Authors>
+		<Copyright>Copyright © 2026 Nuv Tools</Copyright>
+		<Description>A product's backend talking to Nuv Tools Account about who uses it: enrolments of organizations and people, the licence types it sells and the licences people hold, and the gate — whether a person may use the product now — cached per request. Authenticated as the product with its Entra managed identity. Roles and permissions stay in the product.</Description>
+		<PackageProjectUrl>https://nuvtools.com/products/account/</PackageProjectUrl>
+		<PackageTags>NuvTools Account Licensing Enrollment Products SDK</PackageTags>
+		<PackageIcon>icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+		<RepositoryUrl>https://github.com/nuvtools/nuvtools-account-sdk</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
+
+		<PublishRepositoryUrl>true</PublishRepositoryUrl>
+		<EmbedUntrackedSources>true</EmbedUntrackedSources>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+		<ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\..\icon.png" Pack="True" PackagePath="" />
+		<None Include="..\..\LICENSE" Pack="True" PackagePath="" />
+		<None Include="README.md" Pack="True" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- The credential is the product's choice (DefaultAzureCredential in production); only the
+		     contract it implements is needed here. -->
+		<PackageReference Include="Azure.Core" Version="1.60.0" />
+		<PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.13" />
+		<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.13" />
+		<PackageReference Include="NuvTools.Common" Version="10.0.12" />
+	</ItemGroup>
+
+</Project>

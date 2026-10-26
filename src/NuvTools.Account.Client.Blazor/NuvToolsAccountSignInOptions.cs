@@ -23,7 +23,9 @@ public class NuvToolsAccountSignInOptions
 
     /// <summary>
     /// The scopes asked for. The identity scopes by default; add the product API's scope — which is
-    /// also the audience its API checks — for example <c>dataprovider-api</c>.
+    /// also the audience its API checks — for example <c>dataprovider-api</c>, and <c>offline_access</c>
+    /// when the app calls its API with the Account's token, so
+    /// <see cref="NuvToolsAccountSignIn.GetAccessTokenAsync"/> can renew it.
     /// </summary>
     public IList<string> Scopes { get; } = ["openid", "profile", "email"];
 
