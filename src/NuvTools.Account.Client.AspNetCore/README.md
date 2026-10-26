@@ -64,3 +64,30 @@ app.MapNuvToolsAccountSettings(); // GET /account-settings.json → { "authority
 `NuvTools.Account.Client.Blazor` reads that address by default. Add
 `NuvToolsAccountClientSettings.AuthorityOrigin` to the page's `connect-src`: the browser redeems the
 authorization code at the Account itself.
+
+## The Account's API for products
+
+The product's backend tells the Account who uses it — as Microsoft 365 licensing does for an app —
+while its roles and permissions stay in the product, as Dataverse's do for Dynamics 365.
+
+```csharp
+var credential = new DefaultAzureCredential();
+
+builder.Services.AddNuvToolsAccountApi(
+    options => options.BaseUrl = "https://account.nuvtools.com",
+    async cancellationToken => (await credential.GetTokenAsync(
+        new TokenRequestContext(["api://{tenant}/nuv-acc-products-prod/.default"]), cancellationToken)).Token);
+```
+
+The managed identity must be among the Account's `Billing:Products:n:CallerApplicationIds` for the
+product, and in `Security:Products:AllowedApplicationIds`.
+
+- `INuvToolsAccountApi` enrols an Account organization (or a person on their own) when the product
+  creates its tenant, ends the enrolment when it goes, publishes the licence types the product sells,
+  and gives or takes licences. Writes name the person acting; the product decides from its own roles
+  that they may, and the Account records it.
+- `NuvToolsAccountGate.CheckAsync(personId, accountOrganizationId)` answers whether the person may use
+  the product now and with which licence — `null` when not. It asks the Account once a minute, keeps
+  the last answer up to five minutes while the Account cannot be reached and then refuses, and never
+  lets in anybody it has not seen. Call `Evict` after the product changes something itself.
+

@@ -1,4 +1,4 @@
-namespace NuvTools.Account.Client.Products;
+namespace NuvTools.Account.Client.AspNetCore;
 
 /// <summary>A licence type the product sells, as it publishes it.</summary>
 /// <param name="Code">Its handle — <c>professional</c>; also how a plan names its seat price.</param>

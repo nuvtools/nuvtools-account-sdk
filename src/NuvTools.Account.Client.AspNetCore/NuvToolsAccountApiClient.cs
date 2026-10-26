@@ -2,14 +2,14 @@ using Microsoft.Extensions.Logging;
 using NuvTools.Common.ResultWrapper;
 using System.Net.Http.Json;
 
-namespace NuvTools.Account.Client.Products;
+namespace NuvTools.Account.Client.AspNetCore;
 
-/// <inheritdoc cref="INuvToolsAccountProducts" />
-/// <remarks>The token is added by <see cref="NuvToolsAccountProductsTokenHandler"/>, on the client this one is built with.</remarks>
-public class NuvToolsAccountProductsClient(
+/// <inheritdoc cref="INuvToolsAccountApi" />
+/// <remarks>The product's token is added by <see cref="NuvToolsAccountApiTokenHandler"/>, on the client this one is built with.</remarks>
+public class NuvToolsAccountApiClient(
     HttpClient httpClient,
-    NuvToolsAccountProductsOptions options,
-    ILogger<NuvToolsAccountProductsClient> logger) : INuvToolsAccountProducts
+    NuvToolsAccountApiOptions options,
+    ILogger<NuvToolsAccountApiClient> logger) : INuvToolsAccountApi
 {
     /// <summary>The header naming the person a product acts for.</summary>
     public const string ActingPersonHeader = "X-NuvTools-Acting-Person";
@@ -84,6 +84,6 @@ public class NuvToolsAccountProductsClient(
     {
         logger.LogWarning("Nuv Tools Account could not be asked {Path}: {Reason}.", path, reason);
 
-        return Result<T>.Fail(NuvToolsAccountProductsMessages.NotAvailable);
+        return Result<T>.Fail(NuvToolsAccountApiMessages.NotAvailable);
     }
 }

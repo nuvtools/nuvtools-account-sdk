@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Caching.Memory;
 
-namespace NuvTools.Account.Client.Products;
+namespace NuvTools.Account.Client.AspNetCore;
 
 /// <summary>
 /// Whether a person may use the product now, asked of the Account on a request and kept for a short
@@ -9,9 +9,9 @@ namespace NuvTools.Account.Client.Products;
 /// </summary>
 /// <remarks>
 /// <para>
-/// An answer — yes or no — is used for <see cref="NuvToolsAccountProductsOptions.AccessCacheDuration"/>.
+/// An answer — yes or no — is used for <see cref="NuvToolsAccountApiOptions.AccessCacheDuration"/>.
 /// When the Account cannot be reached, the last answer is still used up to
-/// <see cref="NuvToolsAccountProductsOptions.StaleAccessLimit"/>, and after that the gate refuses: it
+/// <see cref="NuvToolsAccountApiOptions.StaleAccessLimit"/>, and after that the gate refuses: it
 /// never fails open, and never lets in anybody it has not seen.
 /// </para>
 /// <para>
@@ -20,9 +20,9 @@ namespace NuvTools.Account.Client.Products;
 /// </para>
 /// </remarks>
 public class NuvToolsAccountGate(
-    INuvToolsAccountProducts products,
+    INuvToolsAccountApi products,
     IMemoryCache cache,
-    NuvToolsAccountProductsOptions options,
+    NuvToolsAccountApiOptions options,
     TimeProvider time)
 {
     private sealed record Entry(NuvToolsAccountAccess? Access, DateTimeOffset AskedOnUtc);

@@ -2,14 +2,14 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Net;
 
-namespace NuvTools.Account.Client.Products.UnitTests;
+namespace NuvTools.Account.Client.AspNetCore.UnitTests;
 
 /// <summary>
 /// The product API client as a product uses it — the requests it sends, and how it tells "no" from
 /// "could not ask" — and the gate on top of it, with its cache.
 /// </summary>
 [TestFixture]
-public class ProductsClientTests
+public class AccountApiTests
 {
     private static readonly Guid Person = Guid.Parse("0199f5d2-0000-7000-8000-0000000000a1");
     private static readonly Guid Organization = Guid.Parse("0199f5d2-0000-7000-8000-0000000000b1");
@@ -23,22 +23,22 @@ public class ProductsClientTests
 
     private StubAccount account = null!;
     private ManualClock clock = null!;
-    private NuvToolsAccountProductsOptions options = null!;
+    private NuvToolsAccountApiOptions options = null!;
 
     [SetUp]
     public void CreateAccount()
     {
         account = new StubAccount();
         clock = new ManualClock();
-        options = new NuvToolsAccountProductsOptions { BaseUrl = "https://account.nuvtools.test", Scope = "api://tenant/nuv-acc-products-test/.default" };
+        options = new NuvToolsAccountApiOptions { BaseUrl = "https://account.nuvtools.test" };
     }
 
     [TearDown]
     public void Dispose() => account.Dispose();
 
-    private NuvToolsAccountProductsClient Client() =>
+    private NuvToolsAccountApiClient Client() =>
         new(new HttpClient(account, disposeHandler: false) { BaseAddress = new Uri("https://account.nuvtools.test/") }, options,
-            NullLogger<NuvToolsAccountProductsClient>.Instance);
+            NullLogger<NuvToolsAccountApiClient>.Instance);
 
     private NuvToolsAccountGate Gate(MemoryCache cache) => new(Client(), cache, options, clock);
 

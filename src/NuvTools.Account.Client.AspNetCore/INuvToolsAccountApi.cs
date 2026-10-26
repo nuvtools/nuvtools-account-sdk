@@ -1,6 +1,6 @@
 using NuvTools.Common.ResultWrapper;
 
-namespace NuvTools.Account.Client.Products;
+namespace NuvTools.Account.Client.AspNetCore;
 
 /// <summary>
 /// The Account's <c>products/me</c> API, as the calling product: its enrolments, the licence types it
@@ -18,7 +18,7 @@ namespace NuvTools.Account.Client.Products;
 /// result that is not "not found", so a caller can tell "no" from "could not ask".
 /// </para>
 /// </remarks>
-public interface INuvToolsAccountProducts
+public interface INuvToolsAccountApi
 {
     /// <summary>Whether a person may use the product now, in an Account organization or on their own; not found when not.</summary>
     Task<IResult<NuvToolsAccountAccess>> GetAccessAsync(Guid personId, Guid? organizationId, CancellationToken cancellationToken = default);

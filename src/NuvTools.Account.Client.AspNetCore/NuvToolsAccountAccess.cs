@@ -1,4 +1,4 @@
-namespace NuvTools.Account.Client.Products;
+namespace NuvTools.Account.Client.AspNetCore;
 
 /// <summary>
 /// The gate's answer: the person may use the product now, through this enrolment, with this licence.

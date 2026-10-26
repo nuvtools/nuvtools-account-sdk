@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
 
-namespace NuvTools.Account.Client.Products.UnitTests;
+namespace NuvTools.Account.Client.AspNetCore.UnitTests;
 
 /// <summary>Stands in for the Account's product API: answers every request with what a test set, and records what was sent.</summary>
 internal sealed class StubAccount : HttpMessageHandler
@@ -18,7 +18,7 @@ internal sealed class StubAccount : HttpMessageHandler
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         Requests.Add((request.Method, request.RequestUri!.PathAndQuery,
-            request.Headers.TryGetValues(NuvToolsAccountProductsClient.ActingPersonHeader, out var acting) ? acting.Single() : null,
+            request.Headers.TryGetValues(NuvToolsAccountApiClient.ActingPersonHeader, out var acting) ? acting.Single() : null,
             request.Content is null ? null : await request.Content.ReadAsStringAsync(cancellationToken)));
 
         if (Unreachable) throw new HttpRequestException("No route to the Account.");

@@ -1,4 +1,4 @@
-namespace NuvTools.Account.Client.Products;
+namespace NuvTools.Account.Client.AspNetCore;
 
 /// <summary>An organization's or a person's use of the product, as the Account holds it.</summary>
 /// <param name="EnrollmentId">The reference to keep next to the product's own tenant.</param>

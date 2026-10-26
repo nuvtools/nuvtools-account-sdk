@@ -1,4 +1,4 @@
-namespace NuvTools.Account.Client.Products.UnitTests;
+namespace NuvTools.Account.Client.AspNetCore.UnitTests;
 
 /// <summary>A clock a test moves by hand.</summary>
 internal sealed class ManualClock : TimeProvider

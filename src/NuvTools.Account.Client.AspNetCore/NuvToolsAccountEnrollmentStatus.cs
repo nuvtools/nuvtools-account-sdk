@@ -1,4 +1,4 @@
-namespace NuvTools.Account.Client.Products;
+namespace NuvTools.Account.Client.AspNetCore;
 
 /// <summary>Whether an enrolment lets its people in; the Account's own values.</summary>
 public enum NuvToolsAccountEnrollmentStatus

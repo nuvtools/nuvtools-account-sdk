@@ -9,10 +9,10 @@
 		<EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
 		<NeutralLanguage>en</NeutralLanguage>
 
-		<Version>10.0.2</Version>
+		<Version>10.0.3</Version>
 		<Authors>Nuv Tools</Authors>
 		<Copyright>Copyright © 2026 Nuv Tools</Copyright>
-		<Description>Server side of signing in through Nuv Tools Account, for a product's ASP.NET Core API and web host. Registers the authentication scheme that accepts the Account's access tokens issued for the product — signing keys from the Account's discovery document, exact issuer and audience — names the claims those tokens carry, and serves the Account's address to a browser client.</Description>
+		<Description>Server side of signing in through Nuv Tools Account, for a product's ASP.NET Core API and web host. Registers the authentication scheme that accepts the Account's access tokens issued for the product — signing keys from the Account's discovery document, exact issuer and audience — names the claims those tokens carry, and serves the Account's address to a browser client. Also the product's client of the Account's API — enrolments, licence types and licences — and the gate: whether a person may use the product now, cached per request. Roles and permissions stay in the product.</Description>
 		<PackageProjectUrl>https://nuvtools.com/products/account/</PackageProjectUrl>
 		<PackageTags>NuvTools Account OpenIdConnect OIDC JwtBearer Authentication SDK</PackageTags>
 		<PackageIcon>icon.png</PackageIcon>
@@ -43,6 +43,10 @@
 
 	<ItemGroup>
 		<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="NuvTools.Common" Version="10.0.12" />
 	</ItemGroup>
 
 	<!-- The bearer handler ships outside the shared framework, one major per runtime. -->

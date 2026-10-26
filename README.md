@@ -4,11 +4,10 @@ The .NET packages a NuvTools product installs to sign people in through **Nuv To
 
 | Package | For | What it does |
 |---|---|---|
-| [`NuvTools.Account.Client.AspNetCore`](src/NuvTools.Account.Client.AspNetCore/README.md) | the product's API and web host | Accepts the Account's access tokens issued for the product, names their claims, and serves the Account's address to the browser |
+| [`NuvTools.Account.Client.AspNetCore`](src/NuvTools.Account.Client.AspNetCore/README.md) | the product's API and web host | Accepts the Account's access tokens issued for the product, names their claims, serves the Account's address to the browser, and calls the Account's API for products — enrolments, licences and the gate |
 | [`NuvTools.Account.Client.Blazor`](src/NuvTools.Account.Client.Blazor/README.md) | the product's Blazor WebAssembly app | Authorization code flow with PKCE, the callback, keeping and renewing the Account's token for the product's API, and signing out through the Account |
-| [`NuvTools.Account.Client.Products`](src/NuvTools.Account.Client.Products/README.md) | the product's backend | Enrolments, licence types and licences at the Account, and the gate — whether a person may use the product — cached per request |
 
-All target .NET 8, 9 and 10. The Data Provider is the first product to use them.
+Both target .NET 8, 9 and 10. Only Nuv Tools products use them: the Account knows each product's client and backend identity. The Data Provider is the first product to use them.
 
 ## How a product signs people in
 
@@ -30,7 +29,7 @@ dotnet test  NuvTools.Account.Sdk.slnx
 
 ## Publishing
 
-One workflow per package (`aspnetcore-publish.yml`, `blazor-publish.yml`, `products-publish.yml`), run by hand. Unchecked, it
+One workflow per package (`aspnetcore-publish.yml`, `blazor-publish.yml`), run by hand. Unchecked, it
 packs and verifies; checked, it pushes the `<Version>` in the project to nuget.org through trusted
 publishing — approved in the `nuget` environment — and then tags the commit. Versions follow the
 NuvTools rule: major is the .NET version, minor a breaking change, patch everything else.

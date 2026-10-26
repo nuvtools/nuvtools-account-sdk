@@ -1,4 +1,4 @@
-namespace NuvTools.Account.Client.Products;
+namespace NuvTools.Account.Client.AspNetCore;
 
 /// <summary>A person of an enrolment's tenant and the licence they hold.</summary>
 /// <param name="PersonId">Their Account subject.</param>
