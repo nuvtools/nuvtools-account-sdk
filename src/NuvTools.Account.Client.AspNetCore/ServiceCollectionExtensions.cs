@@ -13,7 +13,8 @@ public static class ServiceCollectionExtensions
     /// <param name="configure">The Account's address and the gate's cache.</param>
     /// <param name="token">
     /// How the product obtains its token for the Account's API — typically its managed identity asking
-    /// Entra for <c>api://{tenant}/nuv-acc-products-{environment}/.default</c>.
+    /// Entra for <c>api://{tenant}/nuv-acc-products-{environment}/.default</c> — given the product's
+    /// services, so a credential the product already registers can be used.
     /// </param>
     /// <remarks>
     /// Registered whether or not the options are filled in: unconfigured, every call fails without a
@@ -22,7 +23,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddNuvToolsAccountApi(
         this IServiceCollection services,
         Action<NuvToolsAccountApiOptions> configure,
-        Func<CancellationToken, ValueTask<string>> token)
+        Func<IServiceProvider, CancellationToken, ValueTask<string>> token)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
@@ -34,7 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options);
         services.AddMemoryCache();
         services.TryAddSingleton(TimeProvider.System);
-        services.AddTransient(_ => new NuvToolsAccountApiTokenHandler(token));
+        services.AddTransient(sp => new NuvToolsAccountApiTokenHandler(cancellationToken => token(sp, cancellationToken)));
 
         services.AddHttpClient<INuvToolsAccountApi, NuvToolsAccountApiClient>(client =>
             {

@@ -75,7 +75,7 @@ var credential = new DefaultAzureCredential();
 
 builder.Services.AddNuvToolsAccountApi(
     options => options.BaseUrl = "https://account.nuvtools.com",
-    async cancellationToken => (await credential.GetTokenAsync(
+    async (services, cancellationToken) => (await credential.GetTokenAsync(
         new TokenRequestContext(["api://{tenant}/nuv-acc-products-prod/.default"]), cancellationToken)).Token);
 ```
 
